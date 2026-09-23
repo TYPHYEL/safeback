@@ -31,3 +31,4 @@ scikit-image>=0.21.0
 # Face Recognition (Windows-compatible alternative)
 deepface>=0.0.87
 tf-keras>=2.15.0
+dj-database-url>=2.1
