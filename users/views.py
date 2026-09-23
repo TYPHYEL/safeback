@@ -27,25 +27,73 @@ logger = logging.getLogger(__name__)
 
 # Firebase Admin SDK initialization
 try:
+    import os
+    import json
+
     import firebase_admin
     from firebase_admin import credentials as fb_credentials, auth
-    import os
-
-    # Chemin absolu basé sur l'emplacement de ce fichier (users/views.py)
-    # → remonte à backend/ puis cherche dans safetaxi_backend/
-    _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-    _BACKEND_DIR = os.path.dirname(_THIS_DIR)
-    _DEFAULT_CREDS = os.path.join(_BACKEND_DIR, 'safetaxi_backend', 'firebase-service-account.json')
-
-    firebase_creds_path = os.environ.get('FIREBASE_CREDENTIALS', _DEFAULT_CREDS)
 
     if not firebase_admin._apps:
-        if os.path.exists(firebase_creds_path):
-            cred = fb_credentials.Certificate(firebase_creds_path)
-            firebase_admin.initialize_app(cred)
-            print(f"Firebase Admin SDK initialized: {firebase_creds_path}")
+
+        # ============================================================
+        # PRODUCTION : Render
+        # ============================================================
+        firebase_json = os.getenv("FIREBASE_CREDENTIALS_JSON")
+
+        if firebase_json:
+            try:
+                firebase_config = json.loads(firebase_json)
+
+                cred = fb_credentials.Certificate(firebase_config)
+
+                firebase_admin.initialize_app(cred)
+
+                print(
+                    "Firebase Admin SDK initialized "
+                    "from FIREBASE_CREDENTIALS_JSON"
+                )
+
+            except Exception as e:
+                print(
+                    f"Firebase environment initialization error: {e}"
+                )
+
         else:
-            print(f"Firebase credentials not found at: {firebase_creds_path}")
+            # ========================================================
+            # LOCAL : fichier firebase-service-account.json
+            # ========================================================
+            _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+            _BACKEND_DIR = os.path.dirname(_THIS_DIR)
+
+            _DEFAULT_CREDS = os.path.join(
+                _BACKEND_DIR,
+                "safetaxi_backend",
+                "firebase-service-account.json",
+            )
+
+            firebase_creds_path = os.environ.get(
+                "FIREBASE_CREDENTIALS",
+                _DEFAULT_CREDS,
+            )
+
+            if os.path.exists(firebase_creds_path):
+                cred = fb_credentials.Certificate(
+                    firebase_creds_path
+                )
+
+                firebase_admin.initialize_app(cred)
+
+                print(
+                    f"Firebase Admin SDK initialized from file: "
+                    f"{firebase_creds_path}"
+                )
+
+            else:
+                print(
+                    f"Firebase credentials not found at: "
+                    f"{firebase_creds_path}"
+                )
+
 except Exception as e:
     print(f"Firebase initialization error: {e}")
 
