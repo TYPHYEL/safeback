@@ -15,3 +15,8 @@ firebase-service-account.json
 
 # Media uploads
 media/
+
+# Celery Beat runtime files
+celerybeat-schedule
+celerybeat-schedule-shm
+celerybeat-schedule-wal

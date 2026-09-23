@@ -237,6 +237,11 @@ if DATABASE_URL:
         )
     }
 
+    # Force IPv4 connection to Supabase (fixes network unreachable errors on Render)
+    DATABASES['default']['OPTIONS'] = {
+        'sslmode': 'require',
+    }
+
 else:
 
     DATABASES = {
