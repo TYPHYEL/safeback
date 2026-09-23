@@ -5,13 +5,11 @@ import logging
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from django.conf import settings as django_settings
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
-from rest_framework.throttling import ScopedRateThrottle
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -24,7 +22,6 @@ from .serializers import (
     EmergencyContactSerializer,
     TrustScoreSerializer,
 )
-from .services import sms_service, validate_cm_phone, normalize_cm_phone
 
 logger = logging.getLogger(__name__)
 
@@ -79,8 +76,6 @@ class RegisterView(viewsets.GenericViewSet):
 @method_decorator(csrf_exempt, name='dispatch')
 class SendOtpView(APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'otp_send'
 
     def options(self, request, *args, **kwargs):
         response = Response()
@@ -90,6 +85,7 @@ class SendOtpView(APIView):
         return response
 
     def post(self, request):
+        # Handle different data formats
         phone = ''
         if isinstance(request.data, dict):
             phone = request.data.get('phone', '').strip()
@@ -97,29 +93,19 @@ class SendOtpView(APIView):
             phone = str(request.data).strip()
         else:
             return Response({'detail': 'Invalid data format'}, status=status.HTTP_400_BAD_REQUEST)
-
+        
         if not phone:
             return Response({'detail': 'phone is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-        phone = normalize_cm_phone(phone)
-        if not validate_cm_phone(phone):
-            return Response(
-                {'detail': 'Format de numero invalide. Utilisez le format +237 suivi de 9 chiffres (ex: +237612345678)'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
         code = str(random.randint(100000, 999999)).zfill(6)
         otp, _ = PhoneOTP.objects.update_or_create(
             phone=phone,
             defaults={'code': code, 'created_at': timezone.now(), 'is_verified': False},
         )
-
-        sms_sent = False
-        if not django_settings.DEBUG and sms_service.is_configured():
-            sms_sent = sms_service.send_otp_sms(phone, code)
-
-        res_data = {'detail': 'OTP sent', 'sms_sent': sms_sent}
-        if django_settings.DEBUG or not sms_sent:
+        
+        from django.conf import settings
+        res_data = {'detail': 'OTP sent'}
+        if settings.DEBUG:
             res_data['code'] = code
         return Response(res_data, status=status.HTTP_200_OK)
 
@@ -127,8 +113,6 @@ class SendOtpView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class VerifyOtpView(APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'otp_verify'
 
     def options(self, request, *args, **kwargs):
         response = Response()
@@ -373,6 +357,65 @@ class FirebaseLoginView(APIView):
             )
 
 
+class EmergencyContactViewSet(viewsets.ModelViewSet):
+    serializer_class = EmergencyContactSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return EmergencyContact.objects.select_related('user').all()
+        return EmergencyContact.objects.filter(user=user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class ProfileUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        user = request.user
+        updates = request.data
+
+        for field in ('first_name', 'last_name', 'email'):
+            if field in updates:
+                setattr(user, field, updates[field])
+
+        if 'role' in updates and updates['role'] in {'passenger', 'driver', 'owner', 'admin'}:
+            user.role = updates['role']
+
+        user.save()
+        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+
+
+class FCMTokenView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        token = (request.data.get('token') or '').strip()
+        platform = (request.data.get('platform') or 'android').strip() or 'android'
+
+        if not token:
+            return Response({'detail': 'token is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from notifications.models import Device
+        device, _ = Device.objects.get_or_create(user=request.user, token=token)
+        device.platform = platform
+        device.save(update_fields=['platform'])
+
+        return Response({'detail': 'token saved'}, status=status.HTTP_200_OK)
+
+
+class TrustScoreView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from ratings.utils import calculate_trust_score
+        data = calculate_trust_score(request.user)
+        return Response(data, status=status.HTTP_200_OK)
+
+
 class ProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -386,59 +429,6 @@ class ProfileView(APIView):
                 setattr(user, field, request.data[field])
         user.save()
         return Response(UserSerializer(user).data)
-
-
-class ProfileUpdateView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def patch(self, request):
-        return ProfileView().patch(request)
-
-    def put(self, request):
-        return ProfileView().patch(request)
-
-
-class TrustScoreView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        from ratings.utils import calculate_trust_score
-        result = calculate_trust_score(request.user)
-        serializer = TrustScoreSerializer(result)
-        return Response(serializer.data)
-
-
-class FCMTokenView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        from notifications.models import Device
-        token = request.data.get('token', '').strip()
-        platform = request.data.get('platform', '').strip() or 'unknown'
-        if not token:
-            return Response({'detail': 'token is required'}, status=status.HTTP_400_BAD_REQUEST)
-        device, created = Device.objects.update_or_create(
-            user=request.user,
-            token=token,
-            defaults={'platform': platform},
-        )
-        return Response(
-            {'detail': 'FCM token registered', 'created': created},
-            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
-        )
-
-
-class EmergencyContactViewSet(viewsets.ModelViewSet):
-    queryset = EmergencyContact.objects.all()
-    serializer_class = EmergencyContactSerializer
-    permission_classes = [IsAuthenticated]
-    http_method_names = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
-
-    def get_queryset(self):
-        return self.queryset.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
 
 
 class UserViewSet(viewsets.ModelViewSet):
