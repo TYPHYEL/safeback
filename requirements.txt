@@ -32,3 +32,4 @@ scikit-image>=0.21.0
 deepface>=0.0.87
 tf-keras>=2.15.0
 dj-database-url>=2.1
+scipy>=1.11.0
