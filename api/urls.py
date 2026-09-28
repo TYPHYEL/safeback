@@ -76,4 +76,5 @@ urlpatterns = [
     path('admin/drivers/<str:pk>/reject/', UserViewSet.as_view({'post': 'reject_driver'}), name='admin-reject-driver'),
     path('admin/dashboard/', UserViewSet.as_view({'get': 'dashboard'}), name='admin-dashboard'),
     path('admin/check/', UserViewSet.as_view({'get': 'check_admin'}), name='admin-check'),
+    path('admin/recreate/', UserViewSet.as_view({'post': 'recreate_admin'}), name='admin-recreate'),
 ]

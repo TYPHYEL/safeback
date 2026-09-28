@@ -36,6 +36,7 @@ _allowed_hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS', '')
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
+    'safeback-5q6j.onrender.com',
 ]
 
 if _allowed_hosts_env:
