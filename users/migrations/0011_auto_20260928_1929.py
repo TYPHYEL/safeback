@@ -5,7 +5,7 @@ from django.contrib.auth.hashers import make_password
 
 
 def create_admin_user(apps, schema_editor):
-    from users.models import CustomUser
+    CustomUser = apps.get_model('users', 'CustomUser')
     if not CustomUser.objects.filter(username='admin').exists():
         admin = CustomUser.objects.create_superuser(
             username='admin',
@@ -20,7 +20,7 @@ def create_admin_user(apps, schema_editor):
 
 
 def reverse_admin_user(apps, schema_editor):
-    from users.models import CustomUser
+    CustomUser = apps.get_model('users', 'CustomUser')
     CustomUser.objects.filter(username='admin').delete()
     print("Admin user deleted")
 
