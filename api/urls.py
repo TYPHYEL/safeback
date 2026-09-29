@@ -70,6 +70,9 @@ urlpatterns = [
     path('sos/<str:pk>/resolve/', IncidentViewSet.as_view({'post': 'resolve'}), name='sos-resolve'),
     # Trip start endpoint for frontend compatibility
     path('trips/start/', TripViewSet.as_view({'post': 'create'}), name='trips-start'),
+    # Deposit validation endpoints
+    path('deposits/<str:pk>/validate/', DepositViewSet.as_view({'post': 'validate'}), name='deposit-validate'),
+    path('deposits/<str:pk>/start/', DepositViewSet.as_view({'post': 'start'}), name='deposit-start'),
     # Admin endpoints
     path('admin/drivers/pending/', DriverProfileViewSet.as_view({'get': 'pending'}), name='admin-pending-drivers'),
     path('admin/drivers/<str:pk>/approve/', UserViewSet.as_view({'post': 'approve_driver'}), name='admin-approve-driver'),

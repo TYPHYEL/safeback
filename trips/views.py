@@ -281,8 +281,8 @@ class DepositViewSet(viewsets.ModelViewSet):
             expires_at=timezone.now() + timezone.timedelta(minutes=5)  # Expire après 5 minutes
         )
         
-        # Trouver le chauffeur le plus proche
-        nearest_driver = self._find_nearest_driver(deposit)
+        # Trouver le chauffeur le plus proche SANS passager dans le taxi
+        nearest_driver = self._find_nearest_available_driver(deposit)
         
         if nearest_driver:
             # Proposer au chauffeur
@@ -337,6 +337,35 @@ class DepositViewSet(viewsets.ModelViewSet):
             
             if not has_active_trip and not has_active_deposit:
                 available_drivers.append(driver_profile)
+    
+    def _find_nearest_available_driver(self, deposit):
+        """Trouver le chauffeur le plus proche SANS passager dans le taxi"""
+        from users.models import DriverProfile
+        
+        # Récupérer tous les chauffeurs actifs
+        active_drivers = DriverProfile.objects.filter(
+            is_active=True,
+            user__role='driver'
+        ).select_related('user')
+        
+        # Filtrer les chauffeurs qui n'ont PAS de passager dans leur taxi actuel
+        available_drivers = []
+        for driver_profile in active_drivers:
+            # Vérifier si le chauffeur a des passagers dans des trajets actifs
+            has_passengers = Trip.objects.filter(
+                driver=driver_profile.user,
+                status='active',
+                passengers__isnull=False
+            ).exists()
+            
+            # Vérifier si le chauffeur a un dépôt actif avec passager
+            has_active_deposit_with_passenger = Deposit.objects.filter(
+                driver=driver_profile.user,
+                status__in=['accepted', 'active']
+            ).exists()
+            
+            if not has_passengers and not has_active_deposit_with_passenger:
+                available_drivers.append(driver_profile)
         
         if not available_drivers:
             return None
@@ -366,7 +395,7 @@ class DepositViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
-        """Accepter une demande de dépôt (chauffeur)"""
+        """Accepter une demande de dépôt (chauffeur) - NE NOTIFIE PAS LE PASSAGER"""
         deposit = self.get_object()
         
         if request.user != deposit.driver:
@@ -389,25 +418,72 @@ class DepositViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Accepter le dépôt
+        # Accepter le dépôt sans notifier le passager
         deposit.status = 'accepted'
         deposit.driver_trust_score = 5.0  # Score par défaut
         deposit.save()
         
-        # Notifier le passager
+        return Response(DepositSerializer(deposit).data)
+    
+    @action(detail=True, methods=['post'])
+    def validate(self, request, pk=None):
+        """Valider la course quand le chauffeur est sur place - NOTIFIE LE PASSAGER"""
+        deposit = self.get_object()
+        
+        if request.user != deposit.driver:
+            return Response(
+                {'detail': 'Only the assigned driver can validate this deposit'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if deposit.status != 'accepted':
+            return Response(
+                {'detail': 'Deposit must be accepted before validation'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Valider le dépôt et notifier le passager
+        deposit.status = 'validated'
+        deposit.save()
+        
+        # Notifier le passager que le chauffeur est sur place
         try:
             passenger_tokens = list(Device.objects.filter(user=deposit.passenger).values_list('token', flat=True))
             if passenger_tokens:
-                title = 'Dépôt accepté'
-                body = f'Votre course privée a été acceptée par {deposit.driver.username}'
+                title = 'Chauffeur sur place'
+                body = f'Le chauffeur {deposit.driver.username} est arrivé à {deposit.pickup_location}'
                 notify_service.send_multicast(
                     passenger_tokens,
                     title,
                     body,
-                    data={'deposit_id': str(deposit.id), 'type': 'deposit_accepted'}
+                    data={'deposit_id': str(deposit.id), 'type': 'deposit_validated'}
                 )
         except Exception:
             pass
+        
+        return Response(DepositSerializer(deposit).data)
+    
+    @action(detail=True, methods=['post'])
+    def start(self, request, pk=None):
+        """Démarrer le dépôt (depuis validated)"""
+        deposit = self.get_object()
+        
+        if request.user != deposit.driver:
+            return Response(
+                {'detail': 'Only the assigned driver can start this deposit'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if deposit.status != 'validated':
+            return Response(
+                {'detail': 'Deposit must be validated before starting'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Démarrer le dépôt
+        deposit.status = 'active'
+        deposit.started_at = timezone.now()
+        deposit.save()
         
         return Response(DepositSerializer(deposit).data)
     
