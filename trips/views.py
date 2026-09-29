@@ -183,7 +183,7 @@ class DepositViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == 'create':
             return [IsAuthenticated()]  # Passagers peuvent créer des dépôts
-        if self.action in ('accept', 'reject'):
+        if self.action in ('accept', 'reject', 'validate'):
             return [IsDriver()]
         return [IsAuthenticated()]
     

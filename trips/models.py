@@ -36,8 +36,8 @@ class Deposit(models.Model):
     """Course privée pour un seul passager"""
     STATUS_CHOICES = (
         ('pending', 'Pending'),      # En attente de chauffeur
-        ('offered', 'Offered'),      # Proposé à un chauffeur
-        ('accepted', 'Accepted'),    # Accepté par chauffeur
+        ('offered', 'Offered'),      # Proposé à un chauffeur spécifique
+        ('validated', 'Validated'),  # Validé par chauffeur (sur place)
         ('active', 'Active'),        # En cours
         ('completed', 'Completed'),  # Terminé
         ('cancelled', 'Cancelled'),  # Annulé
