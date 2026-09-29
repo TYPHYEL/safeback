@@ -6,14 +6,13 @@ from django.contrib.auth.hashers import make_password
 
 def create_admin_user(apps, schema_editor):
     CustomUser = apps.get_model('users', 'CustomUser')
-    if not CustomUser.objects.filter(username='admin').exists():
+    if not CustomUser.objects.filter(username='admin2').exists():
         admin = CustomUser.objects.create_superuser(
-            username='admin',
+            username='admin2',
             email='admin@safetaxi.cm',
             password='AdminPass123!',
             role='admin'
         )
-        admin.is_staff = True
         admin.is_superuser = True
         admin.save()
         print("Admin user created: admin / AdminPass123!")
