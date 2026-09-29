@@ -5,11 +5,20 @@ echo "========================================"
 echo "SaluTaxi - Starting backend"
 echo "========================================"
 
+echo "Environment variables:"
+echo "PORT=${PORT:-8000}"
+echo "DATABASE_URL=${DATABASE_URL:+[SET]}"
+echo "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:+[SET]}"
+echo "DJANGO_DEBUG=${DJANGO_DEBUG}"
+
 echo "Waiting for DB to be ready..."
 sleep 5
 
 echo "Apply database migrations"
-python manage.py migrate --noinput
+python manage.py migrate --noinput || {
+    echo "Migration failed!"
+    exit 1
+}
 
 echo "Collect static files"
 python manage.py collectstatic --noinput || true
@@ -22,4 +31,5 @@ exec gunicorn safetaxi_backend.wsgi:application \
     --timeout 120 \
     --access-logfile - \
     --error-logfile - \
-    --log-level info
+    --log-level info \
+    --capture-output
