@@ -4,12 +4,8 @@ from .models import Taxi
 
 
 class TaxiSerializer(serializers.ModelSerializer):
-    plate_number = serializers.RegexField(
-        regex=r'^[A-Z]{2}\d{4}[A-Z]$',
-        error_messages={
-            'invalid': 'Numéro de plaque invalide. Exemple attendu: LT1234A.',
-        },
-    )
+    # DEV MODE: Remove plate number validation for simple taxi creation
+    plate_number = serializers.CharField()
     owner = UserSerializer(read_only=True)
     active_driver = UserSerializer(read_only=True)
     license_number = serializers.CharField(required=False, allow_blank=True)
