@@ -75,8 +75,4 @@ urlpatterns = [
     path('deposits/<str:pk>/start/', DepositViewSet.as_view({'post': 'start'}), name='deposit-start'),
     # Admin endpoints
     path('admin/drivers/pending/', DriverProfileViewSet.as_view({'get': 'pending'}), name='admin-pending-drivers'),
-    path('admin/drivers/<str:pk>/approve/', UserViewSet.as_view({'post': 'approve_driver'}), name='admin-approve-driver'),
-    path('admin/drivers/<str:pk>/reject/', UserViewSet.as_view({'post': 'reject_driver'}), name='admin-reject-driver'),
-    path('admin/dashboard/', UserViewSet.as_view({'get': 'dashboard'}), name='admin-dashboard'),
-    path('admin/recreate/', UserViewSet.as_view({'post': 'recreate_admin'}), name='admin-recreate'),
 ]
