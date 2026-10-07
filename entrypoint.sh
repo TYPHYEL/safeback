@@ -15,13 +15,10 @@ echo "Waiting for DB to be ready..."
 sleep 5
 
 echo "Apply database migrations"
-python manage.py migrate --noinput || {
-    echo "Migration failed!"
-    exit 1
-}
+python manage.py migrate --noinput || echo "Migration failed (continuing anyway)"
 
 echo "Collect static files"
-python manage.py collectstatic --noinput || true
+python manage.py collectstatic --noinput || echo "Collectstatic failed (continuing anyway)"
 
 echo "Starting Gunicorn on port ${PORT:-8000}"
 exec gunicorn safetaxi_backend.wsgi:application \
