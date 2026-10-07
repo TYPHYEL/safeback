@@ -15,7 +15,7 @@ class Trip(models.Model):
     driver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='driven_trips')
     passengers = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='trips', blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    join_code = models.CharField(max_length=8, unique=True, blank=True, null=True)
+    join_code = models.CharField(max_length=20, unique=True, blank=True, null=True)
     start_location = models.CharField(max_length=255, blank=True, null=True)
     end_location = models.CharField(max_length=255, blank=True, null=True)
     start_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)

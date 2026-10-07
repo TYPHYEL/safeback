@@ -37,7 +37,7 @@ class TripViewSet(viewsets.ModelViewSet):
             return [IsOwnerOrAdmin()]
         return [IsAuthenticated()]
 
-    def _generate_join_code(self, length=6):
+    def _generate_join_code(self, length=10):
         for _ in range(20):
             code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
             if not Trip.objects.filter(join_code=code).exists():
