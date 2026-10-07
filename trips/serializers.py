@@ -4,10 +4,16 @@ from .models import Trip, Deposit
 
 
 class TripSerializer(serializers.ModelSerializer):
+    passenger_count = serializers.SerializerMethodField()
+    
     class Meta:
         model = Trip
-        fields = ['id', 'taxi', 'driver', 'passengers', 'status', 'join_code', 'start_lat', 'start_lng', 'current_lat', 'current_lng', 'started_at', 'ended_at', 'created_at']
-        read_only_fields = ['driver', 'status', 'join_code', 'started_at', 'ended_at', 'created_at']
+        fields = ['id', 'taxi', 'driver', 'passengers', 'status', 'join_code', 'start_lat', 'start_lng', 'current_lat', 'current_lng', 'started_at', 'ended_at', 'created_at', 'passenger_count']
+        read_only_fields = ['driver', 'status', 'join_code', 'started_at', 'ended_at', 'created_at', 'passenger_count']
+        depth = 1  # Inclut les détails des objets liés (taxi, driver)
+    
+    def get_passenger_count(self, obj):
+        return obj.passengers.count()
 
 
 class DepositSerializer(serializers.ModelSerializer):

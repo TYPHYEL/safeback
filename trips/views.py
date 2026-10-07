@@ -162,11 +162,20 @@ class TripViewSet(viewsets.ModelViewSet):
         """Get trip history for current user"""
         user = request.user
         from django.db.models import Q
-        trips = self.queryset.filter(Q(driver=user) | Q(passengers=user)).order_by('-created_at')
+        from .serializers import TripSerializer
+        
+        # Filtrer les trajets où l'utilisateur est chauffeur ou passager
+        trips = self.queryset.filter(
+            Q(driver=user) | Q(passengers=user)
+        ).order_by('-created_at')
+        
+        # Pagination
         page = int(request.query_params.get('page', 1))
         page_size = 20
         start = (page - 1) * page_size
         end = start + page_size
+        
+        # Sérialiser avec depth=1 pour inclure taxi et driver
         serializer = TripSerializer(trips[start:end], many=True)
         return Response(serializer.data)
 
