@@ -18,10 +18,10 @@ class Trip(models.Model):
     join_code = models.CharField(max_length=20, unique=True, blank=True, null=True)
     start_location = models.CharField(max_length=255, blank=True, null=True)
     end_location = models.CharField(max_length=255, blank=True, null=True)
-    start_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    start_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    current_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    current_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    start_lat = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    start_lng = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    current_lat = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    current_lng = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
     estimated_duration = models.IntegerField(null=True, blank=True, help_text='Duration in minutes')
     fare = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     started_at = models.DateTimeField(null=True, blank=True)
@@ -52,11 +52,11 @@ class Deposit(models.Model):
     
     # Points de départ et d'arrivée
     pickup_location = models.CharField(max_length=255)
-    pickup_lat = models.DecimalField(max_digits=9, decimal_places=6)
-    pickup_lng = models.DecimalField(max_digits=9, decimal_places=6)
+    pickup_lat = models.DecimalField(max_digits=12, decimal_places=6)
+    pickup_lng = models.DecimalField(max_digits=12, decimal_places=6)
     dropoff_location = models.CharField(max_length=255)
-    dropoff_lat = models.DecimalField(max_digits=9, decimal_places=6)
-    dropoff_lng = models.DecimalField(max_digits=9, decimal_places=6)
+    dropoff_lat = models.DecimalField(max_digits=12, decimal_places=6)
+    dropoff_lng = models.DecimalField(max_digits=12, decimal_places=6)
     
     # Prix et distance
     distance_km = models.DecimalField(max_digits=10, decimal_places=2, help_text='Distance en km')
