@@ -47,19 +47,43 @@ class TripViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(driver=self.request.user, join_code=self._generate_join_code())
 
-    def _join_trip(self, trip, user):
+    def _join_trip(self, trip, user, include_details=False):
         if not trip:
             return Response({'detail': 'Trip not found'}, status=status.HTTP_404_NOT_FOUND)
         if user == trip.driver:
             return Response({'detail': 'Driver cannot join as passenger'}, status=status.HTTP_400_BAD_REQUEST)
         if trip.passengers.filter(id=user.id).exists():
+            if include_details:
+                return self._get_trip_with_details(trip)
             return Response(TripSerializer(trip).data)
         taxi = trip.taxi
         if taxi and taxi.capacity is not None and trip.passengers.count() >= taxi.capacity:
             return Response({'detail': 'Trip is full'}, status=status.HTTP_400_BAD_REQUEST)
         trip.passengers.add(user)
         trip.save()
+        if include_details:
+            return self._get_trip_with_details(trip)
         return Response(TripSerializer(trip).data)
+
+    def _get_trip_with_details(self, trip):
+        """Retourne les détails du trajet avec taxi, chauffeur et passagers"""
+        from users.serializers import UserSerializer
+        from taxis.serializers import TaxiSerializer
+        
+        data = TripSerializer(trip).data
+        
+        # Ajouter les informations du taxi
+        if trip.taxi:
+            data['taxi'] = TaxiSerializer(trip.taxi).data
+        
+        # Ajouter les informations du chauffeur
+        if trip.driver:
+            data['driver'] = UserSerializer(trip.driver).data
+        
+        # Ajouter la liste des passagers
+        data['passengers'] = UserSerializer(trip.passengers.all(), many=True).data
+        
+        return Response(data)
 
     @action(detail=False, methods=['post'])
     def join_by_code(self, request):
@@ -67,7 +91,7 @@ class TripViewSet(viewsets.ModelViewSet):
         if not code:
             return Response({'detail': 'join_code required'}, status=status.HTTP_400_BAD_REQUEST)
         trip = get_object_or_404(Trip, join_code=code, status='pending')
-        return self._join_trip(trip, request.user)
+        return self._join_trip(trip, request.user, include_details=True)
 
     @action(detail=True, methods=['post'])
     def join(self, request, pk=None):
